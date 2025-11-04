@@ -1,159 +1,185 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/functions.php';
+include 'includes/db.php';
 
-// Get featured products
-$featured_products = getFeaturedProducts($conn);
+// Get today's and this month's totals
+$today = date("Y-m-d");
+$month = date("Y-m");
+
+// Daily Collection
+$daily = 0;
+$stmt = $conn->prepare("SELECT COALESCE(SUM(total_amount), 0) AS daily_total FROM invoices WHERE DATE(created_at) = ?");
+$stmt->bind_param("s", $today);
+$stmt->execute();
+$stmt->bind_result($daily);
+$stmt->fetch();
+$stmt->close();
+
+// Monthly Collection
+$monthly = 0;
+$stmt = $conn->prepare("SELECT COALESCE(SUM(total_amount), 0) AS monthly_total FROM invoices WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
+$stmt->bind_param("s", $month);
+$stmt->execute();
+$stmt->bind_result($monthly);
+$stmt->fetch();
+$stmt->close();
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Velvet Vogue - Premium Fashion Store</title>
-    <meta name="description" content="Discover premium fashion at Velvet Vogue. Shop the latest trends in men's and women's clothing, accessories, and formal wear with fast shipping.">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kawshalya Beauty Salon - Dashboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #f4f0ff, #ffffff);
+      margin: 0;
+      padding: 0;
+      color: #333;
+      animation: fadeIn 0.6s ease;
+    }
+
+    header {
+      background: linear-gradient(135deg, #b84dff, #8e2de2);
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      border-bottom-left-radius: 40px;
+      border-bottom-right-radius: 40px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    header p {
+      margin-top: 6px;
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .dashboard {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      padding: 50px 20px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 30px;
+      flex: 1;
+      min-width: 260px;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      animation: slideUp 0.6s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 10px 24px rgba(184,77,255,0.25);
+    }
+
+    .card h2 {
+      margin: 10px 0;
+      font-size: 22px;
+      color: #5a2c91;
+    }
+
+    .card p {
+      font-size: 20px;
+      font-weight: bold;
+      color: #28a745;
+    }
+
+    .card a {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #b84dff, #8e2de2);
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    .card a:hover {
+      background: linear-gradient(135deg, #9c3edb, #6c1bb7);
+      transform: scale(1.05);
+    }
+
+    nav {
+      text-align: center;
+      padding: 20px;
+    }
+    nav a {
+      display: inline-block;
+      margin: 10px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #b84dff, #8e2de2);
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: all 0.3s ease;
+    }
+    nav a:hover {
+      background: linear-gradient(135deg, #9c3edb, #6c1bb7);
+      transform: translateY(-3px);
+    }
+
+    @keyframes fadeIn {
+      from {opacity: 0;}
+      to {opacity: 1;}
+    }
+    @keyframes slideUp {
+      from {opacity: 0; transform: translateY(20px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+  </style>
 </head>
 <body>
-    <?php include 'includes/header.php'; ?>
+  <header>
+    <h1>Kawshalya Beauty Salon</h1>
+    <p>✨ Billing Dashboard</p>
+  </header>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-content">
-            <h1>Welcome to Velvet Vogue</h1>
-            <p>Discover the finest collection of premium fashion</p>
-            <a href="products.php" class="btn btn-primary">Shop Now</a>
-        </div>
-        <style>
-.hero {
-    position: relative;
-    height: 100vh;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    color: white;
-}
-
-.background-video {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-    opacity: 0.7; /* Optional: adjust for readability */
-}
-
-.hero-content {
-    position: relative;
-    z-index: 1;
-    max-width: 800px;
-    padding: 20px;
-}
-</style>
-
-            
-    <video autoplay muted loop playsinline class="background-video">
-        <source src="assets/images/videoplayback.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
-
-    
-
-    </section>
-
-   <!-- Categories Section -->
-<section class="categories">
-    <div class="container">
-        <h2 class="section-title">Shop by Category</h2>
-        <div class="category-grid">
-            <!-- Men's Fashion -->
-            <div class="category-card">
-                <img src="assets\images\products\The Perfect Valentine’s look for every man.jpeg" alt="Men's Fashion" />
-                <div class="category-overlay">
-                    <h3>Men's Fashion</h3>
-                    <a href="products.php?category=mens" class="btn btn-secondary">Shop Men's</a>
-                </div>
-            </div>
-
-            <!-- Women's Fashion -->
-            <div class="category-card">
-                <img src="assets\images\products\Upgrade your wardrobe with the most stylish summer….jpeg" alt="Women's Fashion" />
-                <div class="category-overlay">
-                    <h3>Women's Fashion</h3>
-                    <a href="products.php?category=womens" class="btn btn-secondary">Shop Women's</a>
-                </div>
-            </div>
-
-            <!-- Accessories -->
-            <div class="category-card">
-                <img src="assets/images/products/dee94483-782e-4a86-ac60-a88c5b243c55.jpeg" alt="Accessories" />
-                <div class="category-overlay">
-                    <h3>Accessories</h3>
-                    <a href="products.php?category=accessories" class="btn btn-secondary">Shop Accessories</a>
-                </div>
-            </div>
-
-            <!-- Formal Wear -->
-            <div class="category-card">
-                <img src="assets/images/products/e43b119f-2e4e-4a1e-91f8-aad4672a01b9.jpeg" alt="Formal Wear" />
-                <div class="category-overlay">
-                    <h3>Formal Wear</h3>
-                    <a href="products.php?category=formal" class="btn btn-secondary">Shop Formal</a>
-                </div>
-            </div>
-        </div>
+  <div class="dashboard">
+    <div class="card">
+      <h2>💰 Daily Collection</h2>
+      <p>Rs. <?= number_format($daily, 2) ?></p>
     </div>
-</section>
+    <div class="card">
+      <h2>📅 Monthly Collection</h2>
+      <p>Rs. <?= number_format($monthly, 2) ?></p>
+    </div>
+    <div class="card">
+      <h2>📆 Book Appointment</h2>
+      <a href="book_appointment.php">➕ Schedule Now</a>
+    </div>
+    <div class="card">
+      <h2>🗓 View Calendar</h2>
+      <a href="calendar.php">📅 Open Calendar</a>
+    </div>
+  </div>
 
-
-    <!-- Featured Products -->
-    <section class="featured-products">
-        <div class="container">
-            <h2>Featured Products</h2>
-            <div class="products-grid">
-                <?php if ($featured_products && $featured_products->num_rows > 0): ?>
-                    <?php while($product = $featured_products->fetch_assoc()): ?>
-                        <div class="product-card">
-                            <div class="product-image">
-                                <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" />
-                                <?php if ($product['sale_price']): ?>
-                                    <span class="sale-badge">Sale</span>
-                                <?php endif; ?>
-                            </div>
-                            <div class="product-info">
-                                <h3><?php echo htmlspecialchars($product['name']); ?></h3>
-                                <p class="product-category"><?php echo htmlspecialchars($product['category']); ?></p>
-                                <div class="product-price">
-                                    <?php if ($product['sale_price']): ?>
-                                        <span class="original-price">$<?php echo number_format($product['price'], 2); ?></span>
-                                        <span class="sale-price">$<?php echo number_format($product['sale_price'], 2); ?></span>
-                                    <?php else: ?>
-                                        <span class="price">$<?php echo number_format($product['price'], 2); ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="product-actions">
-                                    <a href="product-detail.php?id=<?php echo $product['id']; ?>" class="btn btn-outline">View Details</a>
-                                    <button onclick="addToCart(<?php echo $product['id']; ?>)" class="btn btn-primary">Add to Cart</button>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endwhile; ?>
-                <?php else: ?>
-                    <p>No featured products available.</p>
-                <?php endif; ?>
-            </div>
-        </div>
-    </section>
-
-    <?php include 'includes/footer.php'; ?>
-
-    <script src="assets/js/main.js"></script>
+  <nav>
+    <a href="add_invoice.php">➕ Add Invoice</a>
+    <a href="view_invoices.php">📄 View Invoices</a>
+    <a href="book_appointment.php">📆 Book Appointment</a>
+    <a href="calendar.php">🗓 Appointment Calendar</a>
+  </nav>
 </body>
 </html>
